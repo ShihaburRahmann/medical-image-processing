@@ -1,0 +1,103 @@
+Dataset.file_meta -------------------------------
+(0002,0000) File Meta Information Group Length  UL: 178
+(0002,0001) File Meta Information Version       OB: b'\x00\x01'
+(0002,0002) Media Storage SOP Class UID         UI: CT Image Storage
+(0002,0003) Media Storage SOP Instance UID      UI: 1.2.840.113619.2.5.3608459.17668.1398237263.7
+(0002,0010) Transfer Syntax UID                 UI: Explicit VR Little Endian
+(0002,0012) Implementation Class UID            UI: 1.2.40.0.13.1.1.1
+(0002,0013) Implementation Version Name         SH: 'dcm4che-1.4-JP'
+-------------------------------------------------
+(0008,0005) Specific Character Set              CS: 'ISO_IR 192'
+(0008,0008) Image Type                          CS: ['DERIVED', 'SECONDARY', 'REFORMATTED', 'AVERAGE']
+(0008,0012) Instance Creation Date              DA: ''
+(0008,0013) Instance Creation Time              TM: '193957'
+(0008,0016) SOP Class UID                       UI: CT Image Storage
+(0008,0017) Acquisition UID                     UI: 1801040320200103051513090319.2022.1.0.0
+(0008,0018) SOP Instance UID                    UI: 1.2.840.113619.2.5.3608459.17668.1398237263.7
+(0008,0020) Study Date                          DA: ''
+(0008,0021) Series Date                         DA: ''
+(0008,0022) Acquisition Date                    DA: ''
+(0008,0023) Content Date                        DA: ''
+(0008,0030) Study Time                          TM: '193513'
+(0008,0031) Series Time                         TM: '193940'
+(0008,0032) Acquisition Time                    TM: '193907.580149'
+(0008,0033) Content Time                        TM: '193957'
+(0008,0050) Accession Number                    SH: '2249978673667895'
+(0008,0060) Modality                            CS: 'CT'
+(0008,0070) Manufacturer                        LO: 'GE MEDICAL SYSTEMS'
+(0008,0090) Referring Physician's Name          PN: ''
+(0008,1030) Study Description                   LO: 'RadCTTACEomics_2022 AP'
+(0008,1032)  Procedure Code Sequence  1 item(s) ---- 
+   (0008,0100) Code Value                          SH: 'TCABDPELC'
+   (0008,0102) Coding Scheme Designator            SH: 'GEIIS'
+   (0008,0103) Coding Scheme Version               SH: '0'
+   (0008,0104) Code Meaning                        LO: 'TC abdomino-pelvico con contraste'
+   ---------
+(0008,103E) Series Description                  LO: '11_AP_Ax5.00mm'
+(0008,1090) Manufacturer's Model Name           LO: 'BrightSpeed'
+(0010,0010) Patient's Name                      PN: 'RadCTTACEomics_2022'
+(0010,0020) Patient ID                          LO: '2022'
+(0010,0030) Patient's Birth Date                DA: ''
+(0010,0040) Patient's Sex                       CS: 'M'
+(0010,1010) Patient's Age                       AS: '078Y'
+(0012,0062) Patient Identity Removed            CS: 'YES'
+(0012,0063) De-identification Method            LO: 'CTP Default:  based on DICOM PS3.15 AnnexE. Details in 0012,0064'
+(0012,0064)  De-identification Method Code Sequence  5 item(s) ---- 
+   (0008,0100) Code Value                          SH: '113100'
+   (0008,0102) Coding Scheme Designator            SH: 'DCM'
+   (0008,0104) Code Meaning                        LO: 'Basic Application Confidentiality Profile'
+   ---------
+   (0008,0100) Code Value                          SH: '113105'
+   (0008,0102) Coding Scheme Designator            SH: 'DCM'
+   (0008,0104) Code Meaning                        LO: 'Clean Descriptors Option'
+   ---------
+   (0008,0100) Code Value                          SH: '113107'
+   (0008,0102) Coding Scheme Designator            SH: 'DCM'
+   (0008,0104) Code Meaning                        LO: 'Retain Longitudinal Temporal Information Modified Dates Option'
+   ---------
+   (0008,0100) Code Value                          SH: '113108'
+   (0008,0102) Coding Scheme Designator            SH: 'DCM'
+   (0008,0104) Code Meaning                        LO: 'Retain Patient Characteristics Option'
+   ---------
+   (0008,0100) Code Value                          SH: '113109'
+   (0008,0102) Coding Scheme Designator            SH: 'DCM'
+   (0008,0104) Code Meaning                        LO: 'Retain Device Identity Option'
+   ---------
+(0018,0022) Scan Options                        CS: 'HELICAL MODE'
+(0018,0050) Slice Thickness                     DS: '5.000000'
+(0018,0060) KVP                                 DS: '120'
+(0018,0090) Data Collection Diameter            DS: '500.000000'
+(0018,1040) Contrast/Bolus Route                LO: 'IV'
+(0018,1100) Reconstruction Diameter             DS: '383.0'
+(0018,1120) Gantry/Detector Tilt                DS: '0.000000'
+(0018,1150) Exposure Time                       IS: '808'
+(0018,1210) Convolution Kernel                  SH: 'STANDARD'
+(0018,5100) Patient Position                    CS: 'FFS'
+(0020,000D) Study Instance UID                  UI: 1801040320200103051513090319.2022.1
+(0020,000E) Series Instance UID                 UI: 1801040320200103051513090319.2022.1.0
+(0020,0010) Study ID                            SH: '2022-AP'
+(0020,0011) Series Number                       IS: '0'
+(0020,0012) Acquisition Number                  IS: '1'
+(0020,0013) Instance Number                     IS: '48'
+(0020,0032) Image Position (Patient)            DS: [-198.232422, -194.118164, -244.875000]
+(0020,0037) Image Orientation (Patient)         DS: [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000]
+(0020,0052) Frame of Reference UID              UI: 1.2.840.113654.2.70.1.214451431540179335657072737436075744687
+(0020,1040) Position Reference Indicator        LO: 'XY'
+(0020,1041) Slice Location                      DS: '-244.875000'
+(0028,0002) Samples per Pixel                   US: 1
+(0028,0004) Photometric Interpretation          CS: 'MONOCHROME2'
+(0028,0008) Number of Frames                    IS: '1'
+(0028,0010) Rows                                US: 512
+(0028,0011) Columns                             US: 512
+(0028,0030) Pixel Spacing                       DS: [0.748047, 0.748047]
+(0028,0100) Bits Allocated                      US: 16
+(0028,0101) Bits Stored                         US: 12
+(0028,0102) High Bit                            US: 11
+(0028,0103) Pixel Representation                US: 1
+(0028,0303) Longitudinal Temporal Information M CS: 'MODIFIED'
+(0028,1050) Window Center                       DS: '40'
+(0028,1051) Window Width                        DS: '400'
+(0028,1052) Rescale Intercept                   DS: '0'
+(0028,1053) Rescale Slope                       DS: '1'
+(0028,1054) Rescale Type                        LO: 'Houndsfield Unit'
+(7FE0,0010) Pixel Data                          OW: Array of 524288 elements
