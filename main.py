@@ -4,6 +4,8 @@ import pydicom
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import List, Optional
+import matplotlib.animation as animation
+import scipy.ndimage
 
 
 REF_DIR = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-processing/2022/11_AP_Ax5.00mm")
@@ -11,6 +13,66 @@ INP_DIR = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-process
 
 LIVER_PATH = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-processing/2022/11_AP_Ax5.00mm_ManualROI_Liver.dcm")
 TUMOR_PATH = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-processing/2022/11_AP_Ax5.00mm_ManualROI_Tumor.dcm")
+
+
+# rotate the volume around the axial (Z) plane
+def rotate_on_axial_plane(vol: np.ndarray, angle: float) -> np.ndarray:
+    return scipy.ndimage.rotate(vol, angle, axes=(1, 2), reshape=False)
+
+# compute maximum intensity projection along the given axis
+def max_projection(vol: np.ndarray, axis: int) -> np.ndarray:
+    return vol.max(axis=axis)
+
+# generate a rotating MIP animation with mask overlays
+def animate_rotating_MIP_planes(vol, spacing, mask1=None, mask2=None):
+    alpha = 0.35
+    colors = [(0.0, 0.0, 1.0), (1.0, 0.0, 0.0)]
+    cm = plt.get_cmap("gray")
+
+    # rotation angles for 16 projections
+    angles = np.linspace(0, 360 * 15 / 16, 16)
+
+    fig, ax = plt.subplots()
+    ax.axis("off")
+
+    frames = []
+
+    for angle in angles:
+        # rotate the volume
+        v = rotate_on_axial_plane(vol, angle)
+
+        # compute sagittal MIP
+        mip = v.max(axis=2)
+
+        # normalize and convert to RGB
+        img = cm((mip - vol.min()) / (vol.max() - vol.min()))[..., :3]
+
+        if mask1 is not None or mask2 is not None:
+            # create RGBA overlay
+            overlay = np.ones((*mip.shape, 4), dtype=np.float32)
+            overlay[..., :3] = img
+
+            for idx, m in enumerate((mask1, mask2)):
+                if m is not None:
+                    # rotate and project the mask
+                    m_rot = rotate_on_axial_plane(m, angle)
+                    m_proj = m_rot.max(axis=2) > 0
+
+                    # blend color into overlay
+                    overlay[m_proj, :3] = (
+                        (1 - alpha) * overlay[m_proj, :3] +
+                        alpha * np.array(colors[idx])
+                    )
+
+            frame = ax.imshow(overlay, origin="lower", aspect=spacing[0]/spacing[1], animated=True)
+        else:
+            frame = ax.imshow(mip, cmap="gray", origin="lower", aspect=spacing[0]/spacing[1], animated=True)
+
+        frames.append([frame])
+
+    ani = animation.ArtistAnimation(fig, frames, interval=250, blit=True)
+    ani.save("animation.gif")
+    plt.close(fig)
 
 
 # return CT volume (z, y, x) and voxel spacing (dz, dy, dx)
@@ -76,6 +138,7 @@ def build_mask_volume(ct_dir, seg_path):
         key=lambda f: float(pydicom.dcmread(f).ImagePositionPatient[2])
     )
     ct_datasets = [pydicom.dcmread(f) for f in ct_files]
+    ct_datasets = ct_datasets[:-1]
     ct_zs = np.array([float(ds.ImagePositionPatient[2]) for ds in ct_datasets])
 
     # load segmentation and extract frames
@@ -199,6 +262,8 @@ if __name__ == "__main__":
     # generate masks
     mask_volume_liver = build_mask_volume(REF_DIR, LIVER_PATH)
     mask_volume_tumor = build_mask_volume(REF_DIR, TUMOR_PATH)
+
+    animate_rotating_MIP_planes(volume, spacing_mm, mask_volume_liver, mask_volume_tumor)
 
     # visualize
     show_midplanes(volume, spacing_mm, mask_volume_liver, mask_volume_tumor)
