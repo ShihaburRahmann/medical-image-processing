@@ -101,6 +101,19 @@ def build_mask_volume(ct_dir, seg_path):
     return mask_volume
 
 
+# windowing to improve dynamic range/contrast
+def apply_window(image: np.ndarray,
+                 vmin: float,
+                 vmax: float) -> np.ndarray:
+
+    if vmax <= vmin:
+        raise ValueError("vmax must be greater than vmin")
+
+    clipped = np.clip(image, vmin, vmax)
+    scaled = ((clipped - vmin) / (vmax - vmin)) * 255.0
+    return scaled.astype(np.uint8)
+
+
 def visualize(base: List[np.ndarray], spacing, titles: List[str],
               masks: List[Optional[np.ndarray]] = None,
               alpha=0.3, cmaps=("autumn", "cool")):
@@ -171,6 +184,7 @@ if __name__ == "__main__":
 
     # load the reference directory
     volume, spacing_mm = load_dicom_volume(REF_DIR)
+    volume = apply_window(volume, vmin=-300, vmax=500)
 
     # verify single aquisition
     is_single = verify_single_acquisition(REF_DIR)
