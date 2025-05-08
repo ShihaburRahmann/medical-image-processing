@@ -115,27 +115,34 @@ def apply_window(image: np.ndarray,
 
 
 def visualize(base: List[np.ndarray], spacing, titles: List[str],
-              masks: List[Optional[np.ndarray]] = None,
-              alpha=0.3, cmaps=("autumn", "cool")):
-
-    # calculate physical extents for each plane
+              masks: List[Optional[np.ndarray]] = None,):
+   
+    alpha = 0.35
     dz, dy, dx = spacing
     exts = ([0, dx * base[0].shape[1], 0, dy * base[0].shape[0]],
             [0, dx * base[1].shape[1], 0, dz * len(base[1])],
             [0, dy * base[2].shape[1], 0, dz * len(base[2])])
 
+    colors = [(0.0, 0.0, 1.0),
+              (1.0, 0.0, 0.0)]
+
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
     for i, ax in enumerate(axs):
-        # show CT slice
-        ax.imshow(base[i], cmap='bone', extent=exts[i], origin='lower')  
+        ax.imshow(base[i], cmap='gray', extent=exts[i], origin='lower')
+
         if masks:
             for m_idx, m in enumerate(masks):
                 if m is not None:
-                    ax.imshow(m[i], cmap=cmaps[m_idx % len(cmaps)], alpha=alpha,
-                              extent=exts[i], origin='lower')
+                    mask = m[i]
+                    overlay = np.zeros((*mask.shape, 4), dtype=np.float32)
+                    color = colors[m_idx % len(colors)]
+                    overlay[mask > 0] = [*color, alpha]
+                    ax.imshow(overlay, extent=exts[i], origin='lower')
+
         ax.set_title(titles[i])
         ax.axis('off')
         ax.set_aspect('equal')
+
     plt.tight_layout()
     plt.show()
 
@@ -147,7 +154,7 @@ def show_midplanes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
     masks = None
     if mask1 is not None or mask2 is not None:
         masks = [[m[z], m[:, y, :], m[:, :, x]] if m is not None else None for m in (mask1, mask2)]
-    visualize(base, spacing, [f'Axial z={z}', f'Coronal y={y}', f'Sagittal x={x}'], masks, alpha)
+    visualize(base, spacing, [f'Axial z={z}', f'Coronal y={y}', f'Sagittal x={x}'], masks)
 
 
 def show_mip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
@@ -156,7 +163,7 @@ def show_mip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
     masks = None
     if mask1 is not None or mask2 is not None:
         masks = [[m.max(0), m.max(1), m.max(2)] if m is not None else None for m in (mask1, mask2)]
-    visualize(base, spacing, ['Axial MIP', 'Coronal MIP', 'Sagittal MIP'], masks, alpha)
+    visualize(base, spacing, ['Axial MIP', 'Coronal MIP', 'Sagittal MIP'], masks)
 
 
 def show_aip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
@@ -165,7 +172,7 @@ def show_aip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
     masks = None
     if mask1 is not None or mask2 is not None:
         masks = [[m.max(0), m.max(1), m.max(2)] if m is not None else None for m in (mask1, mask2)]
-    visualize(base, spacing, ['Axial AIP', 'Coronal AIP', 'Sagittal AIP'], masks, alpha)
+    visualize(base, spacing, ['Axial AIP', 'Coronal AIP', 'Sagittal AIP'], masks)
 
 
 # save DICOM header to text file
