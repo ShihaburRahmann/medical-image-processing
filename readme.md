@@ -1,6 +1,6 @@
 # Medical Imaging Project
 
-This project loads, processes, and visualizes CT scans and segmentation data (such as liver and tumor regions) from DICOM files.
+This project loads, processes, and visualizes CT scans and segmentation data (such as liver and tumor regions) from DICOM files. It creates an animation of the CT volume along with the segmentations. It also performs segmentation using the bounding box of the ground truth tumor mask using two algorithms (Region Growing and Watershed) and compares the results.
 
 ## Setup
 
@@ -20,4 +20,4 @@ To run the project:
 python main.py
 ```
 
-This will load the CT volume and segmentation files, verify the data, and display the CT images with the labeled regions using various 2D projection views.
+This will load the CT volume and segmentation files and perform the visualization as well as the segmentation tasks.
