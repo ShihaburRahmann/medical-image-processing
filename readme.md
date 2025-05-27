@@ -10,7 +10,7 @@ This project loads, processes, and visualizes CT scans and segmentation data (su
    pip install -r requirements.txt
    ```
 
-2. Before running the project, make sure to update the directory and file paths at the top of `main.py` to match the location of your data on your system.
+2. Before running the project, make sure to update the directory and file paths at the top of `main.py` to match the location of your data on your system (INP_DIR, REF_DIR, LIVER_PATH, TUMOR_PATH).
 
 ## Run
 
