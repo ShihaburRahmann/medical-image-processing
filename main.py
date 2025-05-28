@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import List, Optional
 import matplotlib.animation as animation
 import scipy.ndimage
-
+from skimage.segmentation import watershed
+from skimage.feature import peak_local_max
+from scipy.ndimage import distance_transform_edt, label
+from sklearn.metrics import precision_score, recall_score, jaccard_score, f1_score
+from skimage.filters import threshold_otsu
 
 REF_DIR = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-processing/2022/11_AP_Ax5.00mm")
 INP_DIR = Path("/Users/shihab/UIB/Medical Image Processing/medical-image-processing/2022/30_EQP_Ax5.00mm")
@@ -26,11 +30,11 @@ def max_projection(vol: np.ndarray, axis: int) -> np.ndarray:
 # generate a rotating MIP animation with mask overlays
 def animate_rotating_MIP_planes(vol, spacing, mask1=None, mask2=None):
     alpha = 0.35
-    colors = [(0.0, 0.0, 1.0), (1.0, 0.0, 0.0)]
+    colors = [(0.0, 1.0, 0.0), (1.0, 0.0, 0.0)]
     cm = plt.get_cmap("gray")
 
     # rotation angles for 16 projections
-    angles = np.linspace(0, 360 * 15 / 16, 16)
+    angles = np.linspace(0, 360 * 31 / 32, 32)
 
     fig, ax = plt.subplots()
     ax.axis("off")
@@ -70,7 +74,7 @@ def animate_rotating_MIP_planes(vol, spacing, mask1=None, mask2=None):
 
         frames.append([frame])
 
-    ani = animation.ArtistAnimation(fig, frames, interval=250, blit=True)
+    ani = animation.ArtistAnimation(fig, frames, interval=100)
     ani.save("animation.gif")
     plt.close(fig)
 
@@ -180,13 +184,13 @@ def apply_window(image: np.ndarray,
 def visualize(base: List[np.ndarray], spacing, titles: List[str],
               masks: List[Optional[np.ndarray]] = None,):
    
-    alpha = 0.35
+    alpha = 0.30
     dz, dy, dx = spacing
     exts = ([0, dx * base[0].shape[1], 0, dy * base[0].shape[0]],
             [0, dx * base[1].shape[1], 0, dz * len(base[1])],
             [0, dy * base[2].shape[1], 0, dz * len(base[2])])
 
-    colors = [(0.0, 0.0, 1.0),
+    colors = [(0.0, 1.0, 0.0),
               (1.0, 0.0, 0.0)]
 
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
@@ -210,7 +214,7 @@ def visualize(base: List[np.ndarray], spacing, titles: List[str],
     plt.show()
 
 
-def show_midplanes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
+def show_midplanes(vol, spacing, mask1=None, mask2=None):
     # extract center slices in all three planes
     z, y, x = np.array(vol.shape) // 2
     base = [vol[z], vol[:, y, :], vol[:, :, x]]
@@ -220,16 +224,16 @@ def show_midplanes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
     visualize(base, spacing, [f'Axial z={z}', f'Coronal y={y}', f'Sagittal x={x}'], masks)
 
 
-def show_mip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
+def show_mip_planes(vol, spacing, mask1=None, mask2=None, titles=['Axial MIP', 'Coronal MIP', 'Sagittal MIP']):
     # compute maximum intensity projections in three planes
     base = [vol.max(0), vol.max(1), vol.max(2)]
     masks = None
     if mask1 is not None or mask2 is not None:
         masks = [[m.max(0), m.max(1), m.max(2)] if m is not None else None for m in (mask1, mask2)]
-    visualize(base, spacing, ['Axial MIP', 'Coronal MIP', 'Sagittal MIP'], masks)
+    visualize(base, spacing, titles, masks)
 
 
-def show_aip_planes(vol, spacing, mask1=None, mask2=None, alpha=0.25):
+def show_aip_planes(vol, spacing, mask1=None, mask2=None):
     # compute average intensity projections in three planes
     base = [vol.mean(0), vol.mean(1), vol.mean(2)]
     masks = None
@@ -244,6 +248,189 @@ def save_header(path, out_txt):
     with open(out_txt, 'w') as f:
         f.write(str(ds))
 
+
+def extract_largest_tumor_slice(tumor_mask: np.ndarray) -> tuple:
+    # Find slice with largest tumor area in each plane
+    z_areas = [np.sum(tumor_mask[i]) for i in range(tumor_mask.shape[0])]
+    y_areas = [np.sum(tumor_mask[:,i,:]) for i in range(tumor_mask.shape[1])]
+    x_areas = [np.sum(tumor_mask[:,:,i]) for i in range(tumor_mask.shape[2])]
+    
+    max_z = np.argmax(z_areas)
+    max_y = np.argmax(y_areas)
+    max_x = np.argmax(x_areas)
+    
+    return max_z, max_y, max_x
+
+
+def show_tumor_at_indices(volume: np.ndarray, mask: np.ndarray, spacing: tuple, 
+                         indices: tuple[int, int, int], title_prefix: str = "", provided_mask: np.ndarray = None):
+    z_idx, y_idx, x_idx = indices
+
+    # Extract the slices at given indices
+    base = [
+        volume[z_idx],          
+        volume[:, y_idx, :],    
+        volume[:, :, x_idx]     
+    ]
+    masks = []
+
+    # If provided_mask is given, extract its slices and add to masks
+    if provided_mask is not None:
+        provided_mask_slices = [
+            provided_mask[z_idx],
+            provided_mask[:, y_idx, :],
+            provided_mask[:, :, x_idx]
+        ]
+        masks.append(provided_mask_slices)
+
+    # Extract corresponding mask slices
+    mask_slices = [
+        mask[z_idx],           
+        mask[:, y_idx, :],     
+        mask[:, :, x_idx]      
+    ]
+
+    masks.append(mask_slices)
+
+    titles = [
+        f'{title_prefix}Axial (z={z_idx})',
+        f'{title_prefix}Coronal (y={y_idx})',
+        f'{title_prefix}Sagittal (x={x_idx})'
+    ]
+
+    # Visualize
+    visualize(base, spacing, titles, masks)
+
+def get_tumor_bbox_and_centroid(mask: np.ndarray):
+    # Get indices of the mask (non-zero values)
+    coords = np.argwhere(mask)
+
+    # Bounding box: min and max along each axis
+    min_z, min_y, min_x = coords.min(axis=0)
+    max_z, max_y, max_x = coords.max(axis=0)
+
+    # Centroid: mean coordinate of the tumor
+    centroid = coords.mean(axis=0)
+
+    bbox = {
+        'z': (min_z, max_z),
+        'y': (min_y, max_y),
+        'x': (min_x, max_x)
+    }
+
+    centroid = tuple(centroid)
+
+    return bbox, centroid
+
+def segment_tumor_watershed(volume: np.ndarray, initial_mask: np.ndarray, margin: int = 1) -> np.ndarray:
+    # Get bounding box from initial mask
+    bbox, _ = get_tumor_bbox_and_centroid(initial_mask)
+    z0, z1 = bbox['z']
+    y0, y1 = bbox['y']
+    x0, x1 = bbox['x']
+    
+    # Add margin to bounding box
+    z0, z1 = max(0, z0-margin), min(volume.shape[0], z1+margin)
+    y0, y1 = max(0, y0-margin), min(volume.shape[1], y1+margin)
+    x0, x1 = max(0, x0-margin), min(volume.shape[2], x1+margin)
+    
+    # Extract subvolume
+    subvol = volume[z0:z1, y0:y1, x0:x1]
+
+    # Create binary mask using Otsu threshold
+    otsu_thresh = threshold_otsu(subvol)
+    mask = subvol > otsu_thresh
+
+    # # Use percentile mask
+    # mask = subvol > np.percentile(subvol, 50)
+    
+    # Compute distance transform for watershed
+    distance = distance_transform_edt(mask)
+
+    # Find markers for watershed using local maxima
+    local_max = peak_local_max(distance, labels=mask, footprint=np.ones((3,3,3)), exclude_border=False)
+    markers = np.zeros_like(subvol, dtype=np.int32)
+    for i, (z, y, x) in enumerate(local_max):
+        markers[z, y, x] = i + 1
+    
+    # Apply watershed transform
+    labels_ws = watershed(-distance, markers, mask=mask)
+    
+    # Keep only largest connected component
+    labeled_array, _ = label(labels_ws > 0)
+    sizes = np.bincount(labeled_array.ravel())
+    sizes[0] = 0  # ignore background
+    largest = np.argmax(sizes)
+    segmented = (labeled_array == largest)
+    
+    # Place segmentation back in full volume
+    full_mask = np.zeros_like(volume, dtype=bool)
+    full_mask[z0:z1, y0:y1, x0:x1] = segmented
+    return full_mask
+
+
+def segment_tumor_region_growing(volume: np.ndarray, initial_mask: np.ndarray, 
+                               threshold: float = 0.1, margin: int = 1) -> np.ndarray:
+    # Get bounding box from initial mask
+    bbox, _ = get_tumor_bbox_and_centroid(initial_mask)
+    z0, z1 = bbox['z']
+    y0, y1 = bbox['y']
+    x0, x1 = bbox['x']
+    
+    # Add margin to bounding box
+    z0, z1 = max(0, z0-margin), min(volume.shape[0], z1+margin)
+    y0, y1 = max(0, y0-margin), min(volume.shape[1], y1+margin)
+    x0, x1 = max(0, x0-margin), min(volume.shape[2], x1+margin)
+    
+    # Extract and normalize subvolume
+    subvol = volume[z0:z1, y0:y1, x0:x1].astype(np.float32)
+    subvol = (subvol - subvol.min()) / (subvol.max() - subvol.min())
+    
+    # Find seed point (brightest point)
+    max_coords = np.unravel_index(np.argmax(subvol), subvol.shape)
+    cz, cy, cx = max_coords
+    seed_intensity = subvol[cz, cy, cx]
+    
+    # Initialize segmentation
+    segmented = np.zeros_like(subvol, dtype=bool)
+    queue = [(cz, cy, cx)]
+    visited = set()
+    
+    # Region growing
+    while queue:
+        z, y, x = queue.pop(0)
+        if (z, y, x) not in visited:
+            visited.add((z, y, x))
+            if (0 <= z < subvol.shape[0] and 
+                0 <= y < subvol.shape[1] and 
+                0 <= x < subvol.shape[2]):
+                # Check if voxel is similar to seed
+                if abs(subvol[z,y,x] - seed_intensity) < threshold:
+                    segmented[z,y,x] = True
+                    neighbors = [
+                        (z-1,y,x), (z+1,y,x),
+                        (z,y-1,x), (z,y+1,x),
+                        (z,y,x-1), (z,y,x+1)
+                    ]
+                    queue.extend(
+                        (nz,ny,nx) for nz,ny,nx in neighbors 
+                        if (nz,ny,nx) not in visited
+                    )
+    
+    # Place segmentation back in full volume
+    full_mask = np.zeros_like(volume, dtype=bool)
+    full_mask[z0:z1, y0:y1, x0:x1] = segmented
+    return full_mask
+
+def evaluate_segmentation(true_mask: np.ndarray, pred_mask: np.ndarray) -> dict:
+    y_true = true_mask.flatten()
+    y_pred = pred_mask.flatten()
+    return {
+        "Dice": f1_score(y_true, y_pred),
+        "Jaccard": jaccard_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred),
+        "Recall": recall_score(y_true, y_pred)
+    }
 
 if __name__ == "__main__":
 
@@ -269,3 +456,44 @@ if __name__ == "__main__":
     show_midplanes(volume, spacing_mm, mask_volume_liver, mask_volume_tumor)
     show_mip_planes(volume, spacing_mm, mask_volume_liver, mask_volume_tumor)
     show_aip_planes(volume, spacing_mm, mask_volume_liver, mask_volume_tumor)
+
+    # Get indices of largest tumor slices
+    max_z, max_y, max_x = extract_largest_tumor_slice(mask_volume_tumor)
+    
+    # Watershed
+    watershed_mask = segment_tumor_watershed(volume, mask_volume_tumor)
+
+    # Region growing
+    region_grown_mask = segment_tumor_region_growing(volume, mask_volume_tumor, threshold=0.60)
+    
+    # show_mip_planes(volume, spacing_mm, None, mask_volume_tumor)
+    show_mip_planes(volume, spacing_mm, mask_volume_tumor, watershed_mask, ['Watershed Axial MIP', 'Watershed Coronal MIP', 'Watershed Sagittal MIP'])
+    show_mip_planes(volume, spacing_mm, mask_volume_tumor, region_grown_mask, ['Region Growing Axial MIP', 'Region Growing Coronal MIP', 'Region Growing Sagittal MIP'])
+
+    show_tumor_at_indices(volume, watershed_mask, spacing_mm, (max_z, max_y, max_x), "Watershed ", provided_mask=mask_volume_tumor)
+    show_tumor_at_indices(volume, region_grown_mask, spacing_mm, (max_z, max_y, max_x), "Region Growing ", provided_mask=mask_volume_tumor)
+
+    metrics_ws = evaluate_segmentation(mask_volume_tumor, watershed_mask)
+    print("Watershed metrics:", metrics_ws)
+
+    metrics_rg = evaluate_segmentation(mask_volume_tumor, region_grown_mask)
+    print("Region Growing metrics:", metrics_rg)
+
+    # Print volumes of original tumor mask
+    tumor_volume = np.sum(mask_volume_tumor)
+    print(f"\nOriginal tumor volume: {tumor_volume} voxels")
+
+    # Segment using watershed and print volume
+    watershed_volume = np.sum(watershed_mask)
+    print(f"Watershed segmentation volume: {watershed_volume} voxels")
+
+    # Region growing and print volume
+    region_growing_volume = np.sum(region_grown_mask)
+    print(f"Region growing segmentation volume: {region_growing_volume} voxels")
+
+    # Print volume differences
+    ws_diff = ((watershed_volume - tumor_volume) / tumor_volume) * 100
+    rg_diff = ((region_growing_volume - tumor_volume) / tumor_volume) * 100
+    print(f"\nVolume differences from ground truth:")
+    print(f"Watershed: {ws_diff:.1f}%")
+    print(f"Region Growing: {rg_diff:.1f}%")
