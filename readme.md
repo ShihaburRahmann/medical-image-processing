@@ -33,5 +33,5 @@ python main.py
 This will load the CT volume and segmentation files and perform the visualization as well as the segmentation tasks.
 
 ## Animation 
-![CT animation](https://github.com/ShihaburRahmann/medical-image-processing/blob/master/animation.gif)
+![CT animation](animation.gif)
 
